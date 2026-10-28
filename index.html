@@ -1,0 +1,901 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pengatur Keuangan Bulanan</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    body {
+      background-color: #121212;
+      background-image: radial-gradient(circle at center, #1f1f1f 0%, #121212 100%);
+      color: #e5e7eb;
+      min-height: 100vh;
+      padding: 30px 20px;
+    }
+
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      position: relative;
+    }
+
+    /* Tombol Menu Garis Tiga: Kecil, Tanpa Background, Pojok Kanan Atas */
+    .menu-toggle {
+      position: absolute;
+      top: 8px;
+      right: 10px;
+      background: none;
+      border: none;
+      color: #34d399;
+      padding: 5px 8px;
+      cursor: pointer;
+      font-size: 22px;
+      z-index: 100;
+      transition: color 0.2s;
+    }
+
+    .menu-toggle:hover {
+      color: #ffffff;
+    }
+
+    /* Sidebar Histori Diperlebar Maksimal Menyamping */
+    .sidebar {
+      position: fixed;
+      top: 0;
+      right: -700px;
+      width: 650px;
+      max-width: 100%;
+      height: 100%;
+      background: #1a1a1a;
+      box-shadow: -5px 0 25px rgba(0,0,0,0.7);
+      z-index: 1000;
+      transition: right 0.3s ease-in-out;
+      display: flex;
+      flex-direction: column;
+      padding: 20px;
+      border-left: 1px solid #2d2d2d;
+    }
+
+    .sidebar.active {
+      right: 0;
+    }
+
+    .sidebar-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      border-bottom: 1px solid #2d2d2d;
+      padding-bottom: 15px;
+    }
+
+    .sidebar-header h2 {
+      color: #d1fae5;
+      font-size: 18px;
+    }
+
+    .close-btn {
+      background: none;
+      border: none;
+      color: #9ca3af;
+      font-size: 24px;
+      cursor: pointer;
+    }
+
+    .close-btn:hover {
+      color: #fff;
+    }
+
+    .history-content {
+      flex: 1;
+      overflow-y: auto;
+      padding-right: 5px;
+    }
+
+    /* Styling Kartu Histori */
+    .history-card {
+      background: #252525;
+      border: 1px solid #333;
+      border-radius: 12px;
+      padding: 15px;
+      margin-bottom: 15px;
+      position: relative;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+      transition: border-color 0.2s;
+    }
+
+    .history-card.locked {
+      border-color: #d97706;
+      background: #23201b;
+    }
+
+    .history-card-top-right {
+      position: absolute;
+      top: 12px;
+      right: 15px;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .history-card-body {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .history-field {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .history-field label {
+      font-size: 11px;
+      color: #9ca3af;
+      margin-bottom: 3px;
+    }
+
+    .history-field input, .history-field select {
+      background: #1e1e1e;
+      border: 1px solid #333;
+      color: #e5e7eb;
+      padding: 8px;
+      border-radius: 6px;
+      font-size: 13px;
+      width: 100%;
+      outline: none;
+    }
+
+    .history-field input:disabled, .history-field select:disabled {
+      background: #181818;
+      color: #71717a;
+      cursor: not-allowed;
+    }
+
+    /* Overlay saat sidebar/modal buka */
+    .overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.5);
+      backdrop-filter: blur(2px);
+      z-index: 999;
+      display: none;
+    }
+
+    .overlay.active {
+      display: block;
+    }
+
+    /* Kotak Judul */
+    .header-box {
+      background: linear-gradient(135deg, #052e1f 0%, #0f6d42 100%);
+      border: 1px solid #1a9e5f;
+      border-radius: 20px;
+      padding: 30px;
+      text-align: center;
+      box-shadow: 0 0 25px rgba(16, 185, 129, 0.25);
+      margin-bottom: 30px;
+      margin-top: 20px;
+    }
+
+    .header-box h1 {
+      color: #d1fae5;
+      font-size: 28px;
+      margin-bottom: 8px;
+    }
+
+    .header-box p {
+      color: #a7f3d0;
+      font-size: 14px;
+      margin-bottom: 15px;
+    }
+
+    /* Jam Digital Header */
+    .clock-badge {
+      display: inline-block;
+      background: rgba(5, 46, 31, 0.8);
+      border: 1px solid #1a9e5f;
+      padding: 8px 18px;
+      border-radius: 30px;
+      color: #34d399;
+      font-weight: 600;
+      font-size: 14px;
+      letter-spacing: 1px;
+      box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);
+    }
+
+    /* Summary Cards */
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 20px;
+      margin-bottom: 30px;
+    }
+
+    .card {
+      background: #1e1e1e;
+      border: 1px solid #2d2d2d;
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+      position: relative;
+    }
+
+    .card-header-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .card h3 {
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #9ca3af;
+      margin-bottom: 0;
+    }
+
+    .card-actions {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .card-menu-btn {
+      background: none;
+      border: none;
+      color: #9ca3af;
+      font-size: 18px;
+      cursor: pointer;
+      padding: 2px 6px;
+      border-radius: 4px;
+      transition: background 0.2s, color 0.2s;
+    }
+
+    .card-menu-btn:hover {
+      background: #2a2a2a;
+      color: #fff;
+    }
+
+    .card .amount {
+      font-size: 24px;
+      font-weight: 700;
+    }
+
+    .card.income .amount { color: #34d399; }
+    .card.expense .amount { color: #f87171; }
+    .card.balance .amount { color: #60a5fa; }
+
+    /* Modal Detail Keterangan & Nominal Histori */
+    .detail-modal {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) scale(0.9);
+      background: #1a1a1a;
+      border: 1px solid #333;
+      border-radius: 16px;
+      width: 450px;
+      max-width: 90%;
+      max-height: 80vh;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+      z-index: 1001;
+      display: flex;
+      flex-direction: column;
+      opacity: 0;
+      pointer-events: none;
+      transition: all 0.25s ease-in-out;
+    }
+
+    .detail-modal.active {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translate(-50%, -50%) scale(1);
+    }
+
+    .detail-modal-header {
+      padding: 15px 20px;
+      border-bottom: 1px solid #2d2d2d;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .detail-modal-header h3 {
+      font-size: 16px;
+      color: #d1fae5;
+    }
+
+    .detail-modal-body {
+      padding: 15px 20px;
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    .detail-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #252525;
+      padding: 10px 14px;
+      border-radius: 8px;
+      margin-bottom: 10px;
+      border: 1px solid #2d2d2d;
+    }
+
+    .detail-item-desc {
+      font-size: 14px;
+      color: #e5e7eb;
+      word-break: break-word;
+      padding-right: 10px;
+    }
+
+    .detail-item-amount {
+      font-size: 14px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .detail-empty {
+      text-align: center;
+      color: #9ca3af;
+      padding: 20px;
+      font-size: 13px;
+    }
+
+    /* Section Titles */
+    .section-title {
+      font-size: 18px;
+      color: #d1fae5;
+      margin-bottom: 12px;
+      margin-top: 35px;
+      font-weight: 600;
+    }
+
+    /* Action Bar */
+    .action-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+
+    .btn {
+      background-color: #10b981;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 10px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+    }
+
+    .btn:hover {
+      background-color: #059669;
+    }
+
+    .btn:active {
+      transform: scale(0.98);
+    }
+
+    .btn-danger {
+      background-color: #ef4444;
+      box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+      padding: 6px 12px;
+      font-size: 12px;
+    }
+
+    .btn-danger:hover {
+      background-color: #dc2626;
+    }
+
+    .btn-save {
+      background-color: #3b82f6;
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+      padding: 6px 12px;
+      font-size: 12px;
+    }
+
+    .btn-save:hover {
+      background-color: #2563eb;
+    }
+
+    .btn-lock {
+      background-color: #6b7280;
+      border: none;
+      color: white;
+      padding: 5px 8px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+
+    .btn-lock.locked {
+      background-color: #d97706;
+    }
+
+    /* Tabel Container & Tabel (Scrollable Horizontal) */
+    .table-container {
+      background: #ffffff;
+      border-radius: 18px;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+    }
+
+    table {
+      width: 100%;
+      min-width: 850px;
+      border-collapse: collapse;
+      text-align: left;
+    }
+
+    th {
+      background-color: #052e1f;
+      color: #d1fae5;
+      padding: 16px;
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: 0.3px;
+    }
+
+    td {
+      padding: 0;
+      border-bottom: 1px solid #f0f0f0;
+      color: #1f2937;
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    /* Wajib Input Styling */
+    table input, table select {
+      border: none;
+      width: 100%;
+      background: transparent;
+      padding: 14px;
+      outline: none;
+      font-size: 14px;
+      color: #1f2937;
+    }
+
+    table input:focus, table select:focus {
+      background: #ecfdf5;
+      box-shadow: inset 0 0 0 2px #10b981;
+    }
+
+    .action-cell {
+      text-align: center;
+      padding: 0 10px;
+      white-space: nowrap;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <!-- Tombol Menu Garis Tiga: Kecil, Tanpa Background, Pojok Kanan Atas -->
+    <button class="menu-toggle" onclick="toggleSidebar()">&#9776;</button>
+
+    <!-- Overlay Gelap Umum -->
+    <div class="overlay" id="overlay" onclick="closeAllModals()"></div>
+
+    <!-- Modal Detail Pemasukan/Pengeluaran -->
+    <div class="detail-modal" id="detailModal">
+      <div class="detail-modal-header">
+        <h3 id="detailModalTitle">Detail</h3>
+        <button class="close-btn" onclick="closeDetailModal()">&times;</button>
+      </div>
+      <div class="detail-modal-body" id="detailModalContent">
+        <!-- Konten detail dinamis -->
+      </div>
+    </div>
+
+    <!-- Sidebar Histori Tersembunyi -->
+    <div class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <h2>Histori Keuangan</h2>
+        <button class="close-btn" onclick="toggleSidebar()">&times;</button>
+      </div>
+
+      <div class="history-content" id="historyListContainer">
+        <!-- Kartu Histori Dinamis Dimuat di Sini -->
+      </div>
+    </div>
+
+    <!-- Kotak Judul -->
+    <div class="header-box">
+      <h1>Pengatur Keuangan Bulanan</h1>
+      <p>Catat dan kelola pemasukan serta pengeluaran Anda </p>
+      <!-- Jam Digital Header -->
+      <div class="clock-badge" id="digitalClock">00:00:00</div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="summary-grid">
+      <div class="card income">
+        <div class="card-header-top">
+          <h3>Total Pemasukan</h3>
+          <div class="card-actions">
+            <button class="card-menu-btn" onclick="openDetailModal('Pemasukan')" title="Lihat Daftar Pemasukan Histori">⋮</button>
+          </div>
+        </div>
+        <div class="amount" id="sumPemasukan">Rp 0</div>
+      </div>
+      <div class="card expense">
+        <div class="card-header-top">
+          <h3>Total Pengeluaran</h3>
+          <div class="card-actions">
+            <button class="card-menu-btn" onclick="openDetailModal('Pengeluaran')" title="Lihat Daftar Pengeluaran Histori">⋮</button>
+          </div>
+        </div>
+        <div class="amount" id="sumPengeluaran">Rp 0</div>
+      </div>
+      <div class="card balance">
+        <div class="card-header-top">
+          <h3>Sisa Saldo</h3>
+        </div>
+        <div class="amount" id="sumSaldo">Rp 0</div>
+      </div>
+    </div>
+
+    <!-- Action Bar -->
+    <div class="action-bar">
+      <button class="btn" onclick="tambahBaris()">+ Tambah Baris Baru</button>
+    </div>
+
+    <!-- Tabel Transaksi Aktif -->
+    <div class="section-title">
+      <span>Data Transaksi</span>
+    </div>
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th style="width: 16%;">Tanggal</th>
+            <th style="width: 12%;">Jam</th>
+            <th style="width: 26%;">Keterangan</th>
+            <th style="width: 16%;">Jenis</th>
+            <th style="width: 14%;">Nominal (Rp)</th>
+            <th style="width: 16%; text-align: center;">Aksi</th>
+          </tr>
+        </thead>
+        <tbody id="tabelBody">
+          <!-- Baris dinamis akan dimuat di sini -->
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    const contohData = [
+      { tanggal: '2026-10-01', jam: '08:30', keterangan: 'Gaji Bulanan', jenis: 'Pemasukan', nominal: 7500000 },
+      { tanggal: '2026-10-05', jam: '14:15', keterangan: 'Belanja Bulanan Supermarket', jenis: 'Pengeluaran', nominal: 1250000 }
+    ];
+
+    window.onload = function() {
+      loadData();
+      updateClock();
+      setInterval(updateClock, 1000);
+    };
+
+    function toggleSidebar() {
+      const sidebar = document.getElementById('sidebar');
+      const overlay = document.getElementById('overlay');
+      const isSidebarActive = sidebar.classList.toggle('active');
+      
+      if (isSidebarActive) {
+        overlay.classList.add('active');
+      } else {
+        checkOverlayStatus();
+      }
+    }
+
+    function closeAllModals() {
+      const sidebar = document.getElementById('sidebar');
+      const modal = document.getElementById('detailModal');
+      const overlay = document.getElementById('overlay');
+
+      sidebar.classList.remove('active');
+      modal.classList.remove('active');
+      overlay.classList.remove('active');
+    }
+
+    function checkOverlayStatus() {
+      const sidebar = document.getElementById('sidebar');
+      const modal = document.getElementById('detailModal');
+      const overlay = document.getElementById('overlay');
+
+      if (!sidebar.classList.contains('active') && !modal.classList.contains('active')) {
+        overlay.classList.remove('active');
+      }
+    }
+
+    function openDetailModal(jenis) {
+      const modal = document.getElementById('detailModal');
+      const overlay = document.getElementById('overlay');
+      const titleEl = document.getElementById('detailModalTitle');
+      const contentEl = document.getElementById('detailModalContent');
+
+      titleEl.innerText = `Daftar Histori ${jenis}`;
+      contentEl.innerHTML = '';
+
+      // Kumpulkan data histori sesuai jenis
+      const cardsHistori = document.querySelectorAll('.history-card');
+      let itemsFound = [];
+
+      cardsHistori.forEach(card => {
+        const inputs = card.querySelectorAll('input, select');
+        const keterangan = inputs[2].value;
+        const itemJenis = inputs[3].value;
+        const nominalStr = inputs[4].value;
+
+        if (itemJenis === jenis) {
+          itemsFound.push({
+            keterangan: keterangan || '(Tanpa Keterangan)',
+            nominal: nominalStr !== '' ? parseFloat(nominalStr) || 0 : ''
+          });
+        }
+      });
+
+      if (itemsFound.length === 0) {
+        contentEl.innerHTML = `<div class="detail-empty">Belum ada data ${jenis.toLowerCase()} di histori.</div>`;
+      } else {
+        itemsFound.forEach(item => {
+          const formattedNominal = item.nominal !== '' ? 'Rp ' + item.nominal.toLocaleString('id-ID') : 'Rp 0';
+          const colorClass = jenis === 'Pemasukan' ? 'color: #34d399;' : 'color: #f87171;';
+          
+          const div = document.createElement('div');
+          div.className = 'detail-item';
+          div.innerHTML = `
+            <div class="detail-item-desc">${escapeHtml(item.keterangan)}</div>
+            <div class="detail-item-amount" style="${colorClass}">${formattedNominal}</div>
+          `;
+          contentEl.appendChild(div);
+        });
+      }
+
+      modal.classList.add('active');
+      overlay.classList.add('active');
+    }
+
+    function closeDetailModal() {
+      const modal = document.getElementById('detailModal');
+      modal.classList.remove('active');
+      checkOverlayStatus();
+    }
+
+    function updateClock() {
+      const now = new Date();
+      const hours = String(now.getHours()).padStart(2, '0');
+      const minutes = String(now.getMinutes()).padStart(2, '0');
+      const seconds = String(now.getSeconds()).padStart(2, '0');
+      document.getElementById('digitalClock').innerText = `${hours}:${minutes}:${seconds} WIB`;
+    }
+
+    function loadData() {
+      const savedData = localStorage.getItem('keuangan');
+      const savedHistori = localStorage.getItem('keuangan_histori');
+      
+      const tbody = document.getElementById('tabelBody');
+      const historyContainer = document.getElementById('historyListContainer');
+      
+      tbody.innerHTML = '';
+      historyContainer.innerHTML = '';
+
+      let dataToLoad = contohData;
+      if (savedData) {
+        try { dataToLoad = JSON.parse(savedData); } catch(e) { dataToLoad = contohData; }
+      }
+
+      let historiToLoad = savedHistori ? JSON.parse(savedHistori) : [];
+
+      if (dataToLoad.length === 0 && historiToLoad.length === 0) {
+        tambahBaris();
+      } else {
+        dataToLoad.forEach(item => buatBarisAktif(item.tanggal, item.jam || '', item.keterangan, item.jenis, item.nominal));
+        historiToLoad.forEach(item => buatKartuHistori(item.tanggal, item.jam || '', item.keterangan, item.jenis, item.nominal, item.isLocked || false));
+      }
+      hitung();
+    }
+
+    function buatBarisAktif(tanggal = '', jam = '', keterangan = '', jenis = 'Pemasukan', nominal = '') {
+      const tbody = document.getElementById('tabelBody');
+      const tr = document.createElement('tr');
+
+      tr.innerHTML = `
+        <td><input type="date" value="${tanggal}" oninput="hitung()" onchange="hitung()"></td>
+        <td><input type="time" value="${jam}" oninput="hitung()" onchange="hitung()"></td>
+        <td><input type="text" placeholder="Ketik di sini..." value="${escapeHtml(keterangan)}" oninput="hitung()" onchange="hitung()"></td>
+        <td>
+          <select oninput="hitung()" onchange="hitung()">
+            <option value="Pemasukan" ${jenis === 'Pemasukan' ? 'selected' : ''}>Pemasukan</option>
+            <option value="Pengeluaran" ${jenis === 'Pengeluaran' ? 'selected' : ''}>Pengeluaran</option>
+          </select>
+        </td>
+        <td><input type="number" value="${nominal !== '' ? nominal : ''}" oninput="hitung()" onchange="hitung()"></td>
+        <td class="action-cell">
+          <button class="btn btn-save" onclick="pindahKeHistori(this)" title="Simpan ke Histori">Save</button>
+          <button class="btn btn-danger" onclick="hapusBarisAktif(this)">X</button>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    }
+
+    function buatKartuHistori(tanggal = '', jam = '', keterangan = '', jenis = 'Pemasukan', nominal = '', isLocked = false) {
+      const container = document.getElementById('historyListContainer');
+      const card = document.createElement('div');
+      card.className = `history-card ${isLocked ? 'locked' : ''}`;
+
+      card.innerHTML = `
+        <div class="history-card-top-right">
+          <button class="btn-lock ${isLocked ? 'locked' : ''}" onclick="toggleLock(this)" title="${isLocked ? 'Buka Gembok' : 'Kunci Gembok'}">${isLocked ? '🔒' : '🔓'}</button>
+          <button class="btn btn-danger" onclick="hapusKartuHistori(this)" ${isLocked ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''}>X</button>
+        </div>
+        <div class="history-card-body">
+          <div class="history-field">
+            <label>Tanggal</label>
+            <input type="date" value="${tanggal}" ${isLocked ? 'disabled' : ''} oninput="hitung()" onchange="hitung()">
+          </div>
+          <div class="history-field">
+            <label>Jam</label>
+            <input type="time" value="${jam}" ${isLocked ? 'disabled' : ''} oninput="hitung()" onchange="hitung()">
+          </div>
+          <div class="history-field" style="grid-column: span 2;">
+            <label>Keterangan</label>
+            <input type="text" placeholder="Keterangan..." value="${escapeHtml(keterangan)}" ${isLocked ? 'disabled' : ''} oninput="hitung()" onchange="hitung()">
+          </div>
+          <div class="history-field">
+            <label>Jenis</label>
+            <select ${isLocked ? 'disabled' : ''} oninput="hitung()" onchange="hitung()">
+              <option value="Pemasukan" ${jenis === 'Pemasukan' ? 'selected' : ''}>Pemasukan</option>
+              <option value="Pengeluaran" ${jenis === 'Pengeluaran' ? 'selected' : ''}>Pengeluaran</option>
+            </select>
+          </div>
+          <div class="history-field">
+            <label>Nominal (Rp)</label>
+            <input type="number" value="${nominal !== '' ? nominal : ''}" ${isLocked ? 'disabled' : ''} oninput="hitung()" onchange="hitung()">
+          </div>
+        </div>
+      `;
+      container.appendChild(card);
+    }
+
+    function toggleLock(button) {
+      const card = button.closest('.history-card');
+      const inputs = card.querySelectorAll('input, select');
+      const btnDelete = card.querySelector('.btn-danger');
+
+      const isCurrentlyLocked = button.classList.contains('locked');
+
+      if (isCurrentlyLocked) {
+        button.classList.remove('locked');
+        button.innerHTML = '🔓';
+        button.title = 'Kunci Gembok';
+        card.classList.remove('locked');
+        inputs.forEach(input => input.removeAttribute('disabled'));
+        if(btnDelete) { btnDelete.removeAttribute('disabled'); btnDelete.style.opacity = '1'; btnDelete.style.cursor = 'pointer'; }
+      } else {
+        button.classList.add('locked');
+        button.innerHTML = '🔒';
+        button.title = 'Buka Gembok';
+        card.classList.add('locked');
+        inputs.forEach(input => input.setAttribute('disabled', 'true'));
+        if(btnDelete) { btnDelete.setAttribute('disabled', 'true'); btnDelete.style.opacity = '0.5'; btnDelete.style.cursor = 'not-allowed'; }
+      }
+      hitung();
+    }
+
+    function tambahBaris() {
+      const now = new Date();
+      const today = now.toISOString().split('T')[0];
+      const currentTime = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
+      buatBarisAktif(today, currentTime, '', 'Pemasukan', '');
+      hitung();
+    }
+
+    function pindahKeHistori(button) {
+      const tr = button.closest('tr');
+      const inputs = tr.querySelectorAll('input, select');
+      const tanggal = inputs[0].value;
+      const jam = inputs[1].value;
+      const keterangan = inputs[2].value;
+      const jenis = inputs[3].value;
+      const nominal = inputs[4].value;
+
+      tr.remove();
+      buatKartuHistori(tanggal, jam, keterangan, jenis, nominal, false);
+      hitung();
+    }
+
+    function hapusBarisAktif(button) {
+      button.closest('tr').remove();
+      hitung();
+    }
+
+    function hapusKartuHistori(button) {
+      const card = button.closest('.history-card');
+      const lockBtn = card.querySelector('.btn-lock');
+      if (lockBtn && lockBtn.classList.contains('locked')) return;
+      
+      card.remove();
+      hitung();
+    }
+
+    function hitung() {
+      const rowsAktif = document.querySelectorAll('#tabelBody tr');
+      const cardsHistori = document.querySelectorAll('.history-card');
+      
+      let totalPemasukan = 0;
+      let totalPengeluaran = 0;
+      
+      let dataAktif = [];
+      let dataHistori = [];
+
+      rowsAktif.forEach(tr => {
+        const inputs = tr.querySelectorAll('input, select');
+        const tanggal = inputs[0].value;
+        const jam = inputs[1].value;
+        const keterangan = inputs[2].value;
+        const jenis = inputs[3].value;
+        const nominalStr = inputs[4].value;
+        const nominal = parseFloat(nominalStr) || 0;
+
+        if (jenis === 'Pemasukan') totalPemasukan += nominal;
+        else totalPengeluaran += nominal;
+
+        dataAktif.push({ tanggal, jam, keterangan, jenis, nominal: nominalStr === '' ? '' : nominal });
+      });
+
+      cardsHistori.forEach(card => {
+        const inputs = card.querySelectorAll('input, select');
+        const tanggal = inputs[0].value;
+        const jam = inputs[1].value;
+        const keterangan = inputs[2].value;
+        const jenis = inputs[3].value;
+        const nominalStr = inputs.length > 4 ? inputs[4].value : card.querySelector('input[type="number"]').value;
+        const nominal = parseFloat(nominalStr) || 0;
+        const lockBtn = card.querySelector('.btn-lock');
+        const isLocked = lockBtn ? lockBtn.classList.contains('locked') : false;
+
+        if (jenis === 'Pemasukan') totalPemasukan += nominal;
+        else totalPengeluaran += nominal;
+
+        dataHistori.push({
+          tanggal, jam, keterangan, jenis,
+          nominal: nominalStr === '' ? '' : nominal,
+          isLocked
+        });
+      });
+
+      const saldo = totalPemasukan - totalPengeluaran;
+
+      document.getElementById('sumPemasukan').innerText = 'Rp ' + totalPemasukan.toLocaleString('id-ID');
+      document.getElementById('sumPengeluaran').innerText = 'Rp ' + totalPengeluaran.toLocaleString('id-ID');
+      document.getElementById('sumSaldo').innerText = 'Rp ' + saldo.toLocaleString('id-ID');
+
+      localStorage.setItem('keuangan', JSON.stringify(dataAktif));
+      localStorage.setItem('keuangan_histori', JSON.stringify(dataHistori));
+    }
+
+    function escapeHtml(text) {
+      return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+    }
+  </script>
+</body>
+</html>
